@@ -107,7 +107,7 @@ public class PlayHttpServerDecorator extends HttpServerDecorator<Request, Reques
       }
       if (!defOption.isEmpty()) {
         final String path = defOption.get().path();
-        span.setResourceName(request.method() + " " + path);
+        withRoute(span, request.method(), path);
       }
     }
     return span;

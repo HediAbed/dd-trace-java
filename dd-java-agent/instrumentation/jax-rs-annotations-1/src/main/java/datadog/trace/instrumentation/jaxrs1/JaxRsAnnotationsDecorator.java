@@ -1,6 +1,11 @@
 package datadog.trace.instrumentation.jaxrs1;
 
 import datadog.trace.agent.tooling.ClassHierarchyIterable;
+import datadog.trace.api.Config;
+import datadog.trace.api.Function;
+import datadog.trace.api.Pair;
+import datadog.trace.api.cache.DDCache;
+import datadog.trace.api.cache.DDCaches;
 import datadog.trace.bootstrap.instrumentation.api.AgentSpan;
 import datadog.trace.bootstrap.instrumentation.api.InternalSpanTypes;
 import datadog.trace.bootstrap.instrumentation.api.Tags;
@@ -16,13 +21,28 @@ import javax.ws.rs.Path;
 public class JaxRsAnnotationsDecorator extends BaseDecorator {
   public static JaxRsAnnotationsDecorator DECORATE = new JaxRsAnnotationsDecorator();
 
-  private static final ClassValue<Map<Method, String>> RESOURCE_NAMES =
-      new ClassValue<Map<Method, String>>() {
+  private static final ClassValue<Map<Method, Pair<CharSequence, CharSequence>>> RESOURCE_NAMES =
+      new ClassValue<Map<Method, Pair<CharSequence, CharSequence>>>() {
         @Override
-        protected Map<Method, String> computeValue(Class<?> type) {
+        protected Map<Method, Pair<CharSequence, CharSequence>> computeValue(Class<?> type) {
           return new ConcurrentHashMap<>();
         }
       };
+
+  private static final Function<Pair<CharSequence, CharSequence>, CharSequence>
+      RESOURCE_NAME_JOINER =
+          new Function<Pair<CharSequence, CharSequence>, CharSequence>() {
+            @Override
+            public CharSequence apply(Pair<CharSequence, CharSequence> input) {
+              if (input.getLeft() == null) {
+                return input.getRight();
+              }
+              return UTF8BytesString.create(input.getLeft() + " " + input.getRight());
+            }
+          };
+  private static final DDCache<Pair<CharSequence, CharSequence>, CharSequence> RESOURCE_NAME_CACHE =
+      DDCaches.newFixedSizeCache(64);
+
   public static final CharSequence JAX_RS_CONTROLLER = UTF8BytesString.create("jax-rs-controller");
 
   @Override
@@ -43,33 +63,34 @@ public class JaxRsAnnotationsDecorator extends BaseDecorator {
   public void onJaxRsSpan(
       final AgentSpan span, final AgentSpan parent, final Class<?> target, final Method method) {
 
-    final String resourceName = getPathResourceName(target, method);
-    updateRootSpan(parent, resourceName);
-
+    final Pair<CharSequence, CharSequence> httpMethodAndRoute =
+        getHttpMethodAndRoute(target, method);
     span.setSpanType(InternalSpanTypes.HTTP_SERVER);
 
     // When jax-rs is the root, we want to name using the path, otherwise use the class/method.
     final boolean isRootScope = parent == null;
-    if (isRootScope && !resourceName.isEmpty()) {
-      span.setResourceName(resourceName);
+    if (isRootScope) {
+      withRoute(span, httpMethodAndRoute.getLeft(), httpMethodAndRoute.getRight());
     } else {
+      if (!parent.getLocalRootSpan().hasResourceName()) {
+        withRoute(
+            parent.getLocalRootSpan(), httpMethodAndRoute.getLeft(), httpMethodAndRoute.getRight());
+        parent.getLocalRootSpan().setTag(Tags.COMPONENT, "jax-rs");
+      }
+
       span.setResourceName(DECORATE.spanNameForMethod(target, method));
     }
   }
 
-  private void updateRootSpan(AgentSpan span, final String resourceName) {
-    if (span == null) {
-      return;
+  private AgentSpan withRoute(
+      final AgentSpan span, final CharSequence method, final CharSequence route) {
+    span.setTag(Tags.HTTP_ROUTE, route);
+    if (Config.get().isHttpServerRouteBasedNaming()) {
+      final CharSequence resourceName =
+          RESOURCE_NAME_CACHE.computeIfAbsent(Pair.of(method, route), RESOURCE_NAME_JOINER);
+      span.setResourceName(resourceName);
     }
-    span = span.getLocalRootSpan();
-
-    if (!span.hasResourceName()) {
-      span.setTag(Tags.COMPONENT, "jax-rs");
-
-      if (!resourceName.isEmpty()) {
-        span.setResourceName(resourceName);
-      }
-    }
+    return span;
   }
 
   /**
@@ -78,10 +99,11 @@ public class JaxRsAnnotationsDecorator extends BaseDecorator {
    *
    * @return The result can be an empty string but will never be {@code null}.
    */
-  private String getPathResourceName(final Class<?> target, final Method method) {
-    Map<Method, String> classMap = RESOURCE_NAMES.get(target);
-    String resourceName = classMap.get(method);
-    if (resourceName == null) {
+  private Pair<CharSequence, CharSequence> getHttpMethodAndRoute(
+      final Class<?> target, final Method method) {
+    Map<Method, Pair<CharSequence, CharSequence>> classMap = RESOURCE_NAMES.get(target);
+    Pair<CharSequence, CharSequence> httpMethodAndRoute = classMap.get(method);
+    if (httpMethodAndRoute == null) {
       String httpMethod = null;
       Path methodPath = null;
       final Path classPath = findClassPath(target);
@@ -106,11 +128,12 @@ public class JaxRsAnnotationsDecorator extends BaseDecorator {
           }
         }
       }
-      resourceName = buildResourceName(httpMethod, classPath, methodPath);
-      classMap.put(method, resourceName);
+      httpMethodAndRoute =
+          Pair.<CharSequence, CharSequence>of(httpMethod, buildRoutePath(classPath, methodPath));
+      classMap.put(method, httpMethodAndRoute);
     }
 
-    return resourceName;
+    return httpMethodAndRoute;
   }
 
   private String locateHttpMethod(final Method method) {
@@ -165,20 +188,15 @@ public class JaxRsAnnotationsDecorator extends BaseDecorator {
     return null;
   }
 
-  private String buildResourceName(
-      final String httpMethod, final Path classPath, final Path methodPath) {
-    final String resourceName;
-    final StringBuilder resourceNameBuilder = new StringBuilder();
-    if (httpMethod != null) {
-      resourceNameBuilder.append(httpMethod);
-      resourceNameBuilder.append(" ");
-    }
+  private String buildRoutePath(final Path classPath, final Path methodPath) {
+    final StringBuilder route = new StringBuilder();
+
     boolean skipSlash = false;
     if (classPath != null) {
       if (!classPath.value().startsWith("/")) {
-        resourceNameBuilder.append("/");
+        route.append("/");
       }
-      resourceNameBuilder.append(classPath.value());
+      route.append(classPath.value());
       skipSlash = classPath.value().endsWith("/");
     }
 
@@ -189,12 +207,11 @@ public class JaxRsAnnotationsDecorator extends BaseDecorator {
           path = path.length() == 1 ? "" : path.substring(1);
         }
       } else if (!path.startsWith("/")) {
-        resourceNameBuilder.append("/");
+        route.append("/");
       }
-      resourceNameBuilder.append(path);
+      route.append(path);
     }
 
-    resourceName = resourceNameBuilder.toString().trim();
-    return resourceName;
+    return route.toString().trim();
   }
 }

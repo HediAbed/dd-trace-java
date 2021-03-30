@@ -64,7 +64,7 @@ public class PlayHttpServerDecorator extends HttpServerDecorator<Request, Reques
       final Option pathOption = request.tags().get("ROUTE_PATTERN");
       if (!pathOption.isEmpty()) {
         final String path = (String) pathOption.get();
-        span.setResourceName(request.method() + " " + path);
+        withRoute(span, request.method(), path);
       }
     }
     return span;

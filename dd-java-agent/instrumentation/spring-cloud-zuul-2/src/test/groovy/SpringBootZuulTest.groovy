@@ -136,6 +136,7 @@ class SpringBootZuulTest extends HttpServerTest<ConfigurableApplicationContext> 
       tags {
         "$Tags.COMPONENT" "java-web-servlet-dispatcher"
         "servlet.path" endpoint.path
+        "$Tags.HTTP_ROUTE" String
 
         if (endpoint.throwsException) {
           "error.msg" EXCEPTION.body
@@ -190,6 +191,7 @@ class SpringBootZuulTest extends HttpServerTest<ConfigurableApplicationContext> 
         "$Tags.HTTP_URL" "${endpoint.resolve(address)}"
         "$Tags.HTTP_METHOD" method
         "$Tags.HTTP_STATUS" endpoint.status
+        "$Tags.HTTP_ROUTE" String
         "servlet.path" endpoint.path
         if (endpoint.errored) {
           "error.msg" { it == null || it == EXCEPTION.body }

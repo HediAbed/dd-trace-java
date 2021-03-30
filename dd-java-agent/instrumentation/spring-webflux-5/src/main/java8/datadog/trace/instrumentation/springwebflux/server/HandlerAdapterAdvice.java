@@ -2,7 +2,6 @@ package datadog.trace.instrumentation.springwebflux.server;
 
 import static datadog.trace.bootstrap.instrumentation.api.AgentTracer.activateSpan;
 import static datadog.trace.instrumentation.springwebflux.server.AdviceUtils.constructOperationName;
-import static datadog.trace.instrumentation.springwebflux.server.AdviceUtils.constructResourceName;
 import static datadog.trace.instrumentation.springwebflux.server.SpringWebfluxHttpServerDecorator.DECORATE;
 
 import datadog.trace.bootstrap.instrumentation.api.AgentScope;
@@ -47,9 +46,8 @@ public class HandlerAdapterAdvice {
     final PathPattern bestPattern =
         exchange.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
     if (parentSpan != null && bestPattern != null) {
-      parentSpan.setResourceName(
-          constructResourceName(
-              exchange.getRequest().getMethodValue(), bestPattern.getPatternString()));
+      DECORATE.withRoute(
+          parentSpan, exchange.getRequest().getMethodValue(), bestPattern.getPatternString());
     }
 
     return scope;

@@ -2,6 +2,7 @@ package datadog.trace.instrumentation.sparkjava;
 
 import static datadog.trace.agent.tooling.bytebuddy.matcher.NameMatchers.named;
 import static datadog.trace.bootstrap.instrumentation.api.AgentTracer.activeSpan;
+import static datadog.trace.instrumentation.sparkjava.Decorator.DECORATE;
 import static java.util.Collections.singletonMap;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.returns;
@@ -31,6 +32,13 @@ public class RoutesInstrumentation extends Instrumenter.Tracing {
   }
 
   @Override
+  public String[] helperClassNames() {
+    return new String[] {
+      packageName + ".Decorator",
+    };
+  }
+
+  @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
     return named("spark.route.Routes");
   }
@@ -53,8 +61,7 @@ public class RoutesInstrumentation extends Instrumenter.Tracing {
 
       final AgentSpan span = activeSpan();
       if (span != null && routeMatch != null) {
-        final String resourceName = method.name().toUpperCase() + " " + routeMatch.getMatchUri();
-        span.setResourceName(resourceName);
+        DECORATE.withRoute(span, method.name().toUpperCase(), routeMatch.getMatchUri());
       }
     }
   }

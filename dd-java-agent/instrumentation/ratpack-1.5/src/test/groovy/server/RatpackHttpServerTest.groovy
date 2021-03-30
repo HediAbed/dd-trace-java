@@ -116,6 +116,11 @@ class RatpackHttpServerTest extends HttpServerTest<EmbeddedApp> {
   }
 
   @Override
+  boolean tagServerSpanWithRoute() {
+    true
+  }
+
+  @Override
   void handlerSpan(TraceAssert trace, ServerEndpoint endpoint = SUCCESS) {
     trace.span {
       serviceName expectedServiceName()
@@ -131,6 +136,7 @@ class RatpackHttpServerTest extends HttpServerTest<EmbeddedApp> {
         "$Tags.HTTP_URL" String
         "$Tags.HTTP_METHOD" String
         "$Tags.HTTP_STATUS" Integer
+        "$Tags.HTTP_ROUTE" String
         if (endpoint == EXCEPTION) {
           errorTags(Exception, EXCEPTION.body)
         }

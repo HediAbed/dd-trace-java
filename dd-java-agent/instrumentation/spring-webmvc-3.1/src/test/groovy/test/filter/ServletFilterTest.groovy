@@ -109,6 +109,7 @@ class ServletFilterTest extends HttpServerTest<ConfigurableApplicationContext> {
       tags {
         "$Tags.COMPONENT" SpringWebHttpServerDecorator.DECORATE.component()
         "$Tags.SPAN_KIND" Tags.SPAN_KIND_SERVER
+        "$Tags.HTTP_ROUTE" String
         if (endpoint == EXCEPTION) {
           errorTags(Exception, EXCEPTION.body)
         }
@@ -140,6 +141,7 @@ class ServletFilterTest extends HttpServerTest<ConfigurableApplicationContext> {
         "$Tags.HTTP_URL" "${endpoint.resolve(address)}"
         "$Tags.HTTP_METHOD" method
         "$Tags.HTTP_STATUS" endpoint.status
+        "$Tags.HTTP_ROUTE" String
         "servlet.path" endpoint.path
         if (endpoint.errored) {
           "error.msg" { it == null || it == EXCEPTION.body }

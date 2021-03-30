@@ -75,7 +75,7 @@ public class FinatraInstrumentation extends Instrumenter.Tracing {
 
       // Update the parent "netty.request"
       final AgentSpan parent = activeSpan();
-      parent.setResourceName(request.method().name() + " " + path);
+      DECORATE.withRoute(parent, request.method().name(), path);
       parent.setTag(Tags.COMPONENT, "finatra");
       parent.setSpanName(FINATRA_REQUEST);
 
