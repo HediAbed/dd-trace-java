@@ -6,7 +6,7 @@ import spock.lang.Requires
 import spock.lang.Shared
 
 @Requires({
-  !System.getProperty("java.vm.name").contains("IBM J9 VM") && System.getenv("CI") != "true"
+  !System.getProperty("java.vm.name").contains("IBM J9 VM") //&& System.getenv("CI") != "true"
 })
 class SpringBootOpenLibertySnapshotTest extends AbstractTestAgentSmokeTest {
 
@@ -47,7 +47,7 @@ class SpringBootOpenLibertySnapshotTest extends AbstractTestAgentSmokeTest {
   def "Test trace snapshot of sending nested request to Openliberty server"() {
     setup:
     Response response
-    String[] ignoredKeys =  ['meta.http.url', 'meta.thread.name', 'meta.peer.port', 'meta.thread.id', "meta.servlet.path"]
+    String[] ignoredKeys =  ['meta.http.url', 'meta.thread.name', 'meta.peer.port', 'meta.thread.id', 'meta.servlet.path']
     snapshot("datadog.smoketest.SpringBootOpenLibertySnapshotTest.nested", ignoredKeys, {
       def url = "http://localhost:${httpPort}/connect"
       def request = new Request.Builder().url(url).get().build()
@@ -57,5 +57,10 @@ class SpringBootOpenLibertySnapshotTest extends AbstractTestAgentSmokeTest {
     expect:
     response != null
     response.code() == 200
+  }
+
+  @Override
+  String projectName() {
+    return "springboot-openliberty"
   }
 }
