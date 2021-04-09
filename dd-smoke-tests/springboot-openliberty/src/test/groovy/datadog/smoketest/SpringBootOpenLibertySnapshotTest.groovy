@@ -6,7 +6,7 @@ import spock.lang.Requires
 import spock.lang.Shared
 
 @Requires({
-  !System.getProperty("java.vm.name").contains("IBM J9 VM") //&& System.getenv("CI") != "true"
+  !System.getProperty("java.vm.name").contains("IBM J9 VM")
 })
 class SpringBootOpenLibertySnapshotTest extends AbstractTestAgentSmokeTest {
 
@@ -57,10 +57,5 @@ class SpringBootOpenLibertySnapshotTest extends AbstractTestAgentSmokeTest {
     expect:
     response != null
     response.code() == 200
-  }
-
-  @Override
-  String projectName() {
-    return "springboot-openliberty"
   }
 }
