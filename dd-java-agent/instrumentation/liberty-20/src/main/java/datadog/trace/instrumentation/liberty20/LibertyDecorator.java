@@ -59,8 +59,7 @@ public class LibertyDecorator
     return response.getStatus();
   }
 
-  public AgentSpan onRequest(
-      AgentSpan span, HttpServletRequest request, AgentSpan.Context.Extracted context) {
+  public AgentSpan getPath(AgentSpan span, HttpServletRequest request) {
     if (request != null) {
       String contextPath = request.getContextPath();
       String servletPath = request.getServletPath();
@@ -75,11 +74,9 @@ public class LibertyDecorator
       request.setAttribute(DD_CONTEXT_PATH_ATTRIBUTE, contextPath);
       request.setAttribute(DD_SERVLET_PATH_ATTRIBUTE, servletPath);
     }
-    return super.onRequest(span, request, request, context);
+    return span;
   }
 
-  // function is overloaded? when compared to onresponse
-  // on response (HttpChannel is the object calling the function)
   public AgentSpan onResponse(AgentSpan span, SRTServletResponse response) {
     HttpServletRequest req = response.getRequest();
 
@@ -98,7 +95,8 @@ public class LibertyDecorator
       }
       onError(span, throwable);
     }
-    // overwrite the HTTP status codes, and  if a custom error report is provided by liberty server
+
+    // overwrite the HTTP status codes, and if a custom error report is provided by liberty server
     if (report instanceof WebAppErrorReport) {
       WebAppErrorReport errReport = (WebAppErrorReport) report;
       onError(span, errReport, throwable);
@@ -109,7 +107,7 @@ public class LibertyDecorator
   public AgentSpan onError(AgentSpan span, WebAppErrorReport report, Throwable servletThrowable) {
     span.setError(true);
     span.setTag(Tags.HTTP_STATUS, report.getErrorCode());
-    // make sure the two reported throwables are different
+    // make sure the two reported throwables are different throwables
     if (report.getCause() != null
         && (servletThrowable == null || servletThrowable.getCause() != report.getCause())) {
       span.addThrowable(report.getCause());
@@ -117,17 +115,4 @@ public class LibertyDecorator
     span.setTag(DDTags.ERROR_MSG, report.getMessage());
     return span;
   }
-
-  //  public AgentSpan onError(
-  //      AgentSpan span, final Throwable throwable, final int statusCode, final String description)
-  // {
-  //    super.onError(span, throwable);
-  //    if (statusCode != -1) {
-  //      span.setTag("status.code", statusCode);
-  //    }
-  //    if (description != null) {
-  //      span.setErrorMessage(description);
-  //    }
-  //    return span;
-  //  }
 }

@@ -6,6 +6,7 @@ import static datadog.trace.instrumentation.liberty20.LibertyDecorator.DECORATE;
 import static java.util.Collections.singletonMap;
 import static net.bytebuddy.matcher.ElementMatchers.takesNoArguments;
 
+import com.google.auto.service.AutoService;
 import com.ibm.ws.webcontainer.srt.SRTServletResponse;
 import com.ibm.wsspi.webcontainer.servlet.IExtendedRequest;
 import datadog.trace.agent.tooling.Instrumenter;
@@ -16,6 +17,7 @@ import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
+@AutoService(Instrumenter.class)
 public class ResponseFinishInstrumentation extends Instrumenter.Tracing {
 
   public ResponseFinishInstrumentation() {
@@ -25,7 +27,7 @@ public class ResponseFinishInstrumentation extends Instrumenter.Tracing {
   @Override
   public String[] helperClassNames() {
     return new String[] {
-      packageName + ".LibertyDecorator",
+      packageName + ".LibertyDecorator", packageName + ".RequestURIDataAdapter",
     };
   }
 
@@ -38,7 +40,7 @@ public class ResponseFinishInstrumentation extends Instrumenter.Tracing {
   public Map<? extends ElementMatcher<? super MethodDescription>, String> transformers() {
     return singletonMap(
         named("finish").and(takesNoArguments()),
-        RequestFinishInstrumentation.class.getName() + "$ResponseFinishAdvice");
+        ResponseFinishInstrumentation.class.getName() + "$ResponseFinishAdvice");
   }
 
   public static class ResponseFinishAdvice {

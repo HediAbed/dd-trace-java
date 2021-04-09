@@ -6,6 +6,7 @@ import static datadog.trace.instrumentation.liberty20.LibertyDecorator.DECORATE;
 import static java.util.Collections.singletonMap;
 import static net.bytebuddy.matcher.ElementMatchers.takesNoArguments;
 
+import com.google.auto.service.AutoService;
 import com.ibm.ws.webcontainer.srt.SRTServletRequest;
 import com.ibm.ws.webcontainer.srt.SRTServletResponse;
 import com.ibm.wsspi.webcontainer.servlet.IExtendedResponse;
@@ -17,6 +18,7 @@ import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
+@AutoService(Instrumenter.class)
 public class RequestFinishInstrumentation extends Instrumenter.Tracing {
 
   public RequestFinishInstrumentation() {
@@ -26,7 +28,7 @@ public class RequestFinishInstrumentation extends Instrumenter.Tracing {
   @Override
   public String[] helperClassNames() {
     return new String[] {
-      packageName + ".LibertyDecorator",
+      packageName + ".LibertyDecorator", packageName + ".RequestURIDataAdapter",
     };
   }
 
@@ -46,7 +48,6 @@ public class RequestFinishInstrumentation extends Instrumenter.Tracing {
   public static class RequestFinishAdvice {
     @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
     public static void stopSpan(@Advice.This SRTServletRequest req) {
-
       IExtendedResponse resp = req.getResponse();
 
       // this should be a servlet response
