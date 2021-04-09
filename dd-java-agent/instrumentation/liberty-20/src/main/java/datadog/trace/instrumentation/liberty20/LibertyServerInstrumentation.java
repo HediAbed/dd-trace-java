@@ -22,7 +22,6 @@ import datadog.trace.bootstrap.instrumentation.api.AgentTracer;
 import java.util.HashMap;
 import java.util.Map;
 import javax.servlet.ServletRequest;
-import javax.servlet.http.HttpServletRequest;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
@@ -65,19 +64,18 @@ public final class LibertyServerInstrumentation extends Instrumenter.Tracing {
   public static class HandleRequestAdvice {
 
     @Advice.OnMethodEnter(suppress = Throwable.class)
-    public static AgentScope onEnter(
-        @Advice.Argument(value = 0) ServletRequest req) {
+    public static AgentScope onEnter(@Advice.Argument(value = 0) ServletRequest req) {
       if (!(req instanceof SRTServletRequest)) return null;
       SRTServletRequest request = (SRTServletRequest) req;
 
-      // if we try to get an attribute that doesn't exist open liberty might complain with an exception
+      // if we try to get an attribute that doesn't exist open liberty might complain with an
+      // exception
       try {
         Object existingSpan = request.getAttribute(DD_SPAN_ATTRIBUTE);
         if (existingSpan instanceof AgentSpan) {
           return activateSpan((AgentSpan) existingSpan);
         }
-      }
-      catch( NullPointerException e) {
+      } catch (NullPointerException e) {
       }
 
       final AgentSpan.Context.Extracted extractedContext = propagate().extract(request, GETTER);
@@ -96,12 +94,14 @@ public final class LibertyServerInstrumentation extends Instrumenter.Tracing {
     }
 
     @Advice.OnMethodExit(suppress = Throwable.class, onThrowable = Throwable.class)
-    public static void closeScope(@Advice.Enter final AgentScope scope, @Advice.Argument(value = 0) ServletRequest req) {
+    public static void closeScope(
+        @Advice.Enter final AgentScope scope, @Advice.Argument(value = 0) ServletRequest req) {
       if (!(req instanceof SRTServletRequest)) return;
       SRTServletRequest request = (SRTServletRequest) req;
 
       if (scope != null) {
-        //we cannot get path at the start because the path/context attributes are not yet initialized
+        // we cannot get path at the start because the path/context attributes are not yet
+        // initialized
         DECORATE.getPath(scope.span(), request);
         scope.close();
       }
