@@ -3,7 +3,6 @@ package datadog.trace.instrumentation.liberty20;
 import datadog.trace.bootstrap.instrumentation.api.URIDataAdapter;
 import javax.servlet.http.HttpServletRequest;
 
-// this is used to interface with the OPEN LIBERTY API request
 final class RequestURIDataAdapter implements URIDataAdapter {
 
   private final HttpServletRequest request;

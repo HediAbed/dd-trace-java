@@ -13,7 +13,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-// wrapper for processing incoming requests and responses
 public class LibertyDecorator
     extends HttpServerDecorator<HttpServletRequest, HttpServletRequest, HttpServletResponse> {
 

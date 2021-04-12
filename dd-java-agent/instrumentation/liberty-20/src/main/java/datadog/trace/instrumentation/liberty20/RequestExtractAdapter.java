@@ -4,7 +4,6 @@ import datadog.trace.bootstrap.instrumentation.api.AgentPropagation;
 import java.util.Enumeration;
 import javax.servlet.http.HttpServletRequest;
 
-// interface with request to extract the headers
 public class RequestExtractAdapter implements AgentPropagation.ContextVisitor<HttpServletRequest> {
 
   public static final RequestExtractAdapter GETTER = new RequestExtractAdapter();
