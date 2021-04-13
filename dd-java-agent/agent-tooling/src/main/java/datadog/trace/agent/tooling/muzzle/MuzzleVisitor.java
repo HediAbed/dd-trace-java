@@ -158,299 +158,299 @@ public class MuzzleVisitor implements AsmVisitorWrapper {
          *   return this.instrumentationMuzzle;
          * }
          */
-        try {
-          final MethodVisitor mv =
-              super.visitMethod(
-                  Opcodes.ACC_PROTECTED + Opcodes.ACC_SYNCHRONIZED,
-                  MUZZLE_METHOD_NAME,
-                  "()Ldatadog/trace/agent/tooling/muzzle/ReferenceMatcher;",
-                  null,
-                  null);
-
-          mv.visitCode();
-          final Label start = new Label();
-          final Label ret = new Label();
-          final Label finish = new Label();
-
-          mv.visitLabel(start);
-          mv.visitInsn(Opcodes.ACONST_NULL);
-          mv.visitVarInsn(Opcodes.ALOAD, 0);
-          mv.visitFieldInsn(
-              Opcodes.GETFIELD,
-              instrumentationClassName,
-              MUZZLE_FIELD_NAME,
-              "Ldatadog/trace/agent/tooling/muzzle/ReferenceMatcher;");
-          mv.visitJumpInsn(Opcodes.IF_ACMPNE, ret);
-
-          mv.visitVarInsn(Opcodes.ALOAD, 0);
-
-          mv.visitTypeInsn(Opcodes.NEW, "datadog/trace/agent/tooling/muzzle/ReferenceMatcher");
-          mv.visitInsn(Opcodes.DUP);
-
-          mv.visitVarInsn(Opcodes.ALOAD, 0);
-          mv.visitMethodInsn(
-              Opcodes.INVOKEVIRTUAL,
-              instrumentationClassName,
-              "helperClassNames",
-              "()[Ljava/lang/String;",
-              false);
-
-          final Reference[] references = generateReferences();
-          mv.visitLdcInsn(references.length);
-          mv.visitTypeInsn(Opcodes.ANEWARRAY, "datadog/trace/agent/tooling/muzzle/Reference");
-
-          for (int i = 0; i < references.length; ++i) {
-            mv.visitInsn(Opcodes.DUP);
-            mv.visitLdcInsn(i);
-            mv.visitTypeInsn(Opcodes.NEW, "datadog/trace/agent/tooling/muzzle/Reference$Builder");
-            mv.visitInsn(Opcodes.DUP);
-            mv.visitLdcInsn(references[i].getClassName());
-            mv.visitMethodInsn(
-                Opcodes.INVOKESPECIAL,
-                "datadog/trace/agent/tooling/muzzle/Reference$Builder",
-                "<init>",
-                "(Ljava/lang/String;)V",
-                false);
-            for (Reference.Source source : references[i].getSources()) {
-              mv.visitLdcInsn(source.getName());
-              mv.visitLdcInsn(source.getLine());
-              mv.visitMethodInsn(
-                  Opcodes.INVOKEVIRTUAL,
-                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
-                  "withSource",
-                  "(Ljava/lang/String;I)Ldatadog/trace/agent/tooling/muzzle/Reference$Builder;",
-                  false);
-            }
-            for (Reference.Flag flag : references[i].getFlags()) {
-              mv.visitFieldInsn(
-                  Opcodes.GETSTATIC,
-                  "datadog/trace/agent/tooling/muzzle/Reference$Flag",
-                  flag.name(),
-                  "Ldatadog/trace/agent/tooling/muzzle/Reference$Flag;");
-              mv.visitMethodInsn(
-                  Opcodes.INVOKEVIRTUAL,
-                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
-                  "withFlag",
-                  "(Ldatadog/trace/agent/tooling/muzzle/Reference$Flag;)Ldatadog/trace/agent/tooling/muzzle/Reference$Builder;",
-                  false);
-            }
-            if (null != references[i].getSuperName()) {
-              mv.visitLdcInsn(references[i].getSuperName());
-              mv.visitMethodInsn(
-                  Opcodes.INVOKEVIRTUAL,
-                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
-                  "withSuperName",
-                  "(Ljava/lang/String;)Ldatadog/trace/agent/tooling/muzzle/Reference$Builder;",
-                  false);
-            }
-            for (String interfaceName : references[i].getInterfaces()) {
-              mv.visitLdcInsn(interfaceName);
-              mv.visitMethodInsn(
-                  Opcodes.INVOKEVIRTUAL,
-                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
-                  "withInterface",
-                  "(Ljava/lang/String;)Ldatadog/trace/agent/tooling/muzzle/Reference$Builder;",
-                  false);
-            }
-            for (Reference.Field field : references[i].getFields()) {
-              { // sources
-                mv.visitLdcInsn(field.getSources().size());
-                mv.visitTypeInsn(
-                    Opcodes.ANEWARRAY, "datadog/trace/agent/tooling/muzzle/Reference$Source");
-
-                int j = 0;
-                for (Reference.Source source : field.getSources()) {
-                  mv.visitInsn(Opcodes.DUP);
-                  mv.visitLdcInsn(j);
-
-                  mv.visitTypeInsn(
-                      Opcodes.NEW, "datadog/trace/agent/tooling/muzzle/Reference$Source");
-                  mv.visitInsn(Opcodes.DUP);
-                  mv.visitLdcInsn(source.getName());
-                  mv.visitLdcInsn(source.getLine());
-                  mv.visitMethodInsn(
-                      Opcodes.INVOKESPECIAL,
-                      "datadog/trace/agent/tooling/muzzle/Reference$Source",
-                      "<init>",
-                      "(Ljava/lang/String;I)V",
-                      false);
-
-                  mv.visitInsn(Opcodes.AASTORE);
-                  ++j;
-                }
-              }
-
-              { // flags
-                mv.visitLdcInsn(field.getFlags().size());
-                mv.visitTypeInsn(
-                    Opcodes.ANEWARRAY, "datadog/trace/agent/tooling/muzzle/Reference$Flag");
-
-                int j = 0;
-                for (Reference.Flag flag : field.getFlags()) {
-                  mv.visitInsn(Opcodes.DUP);
-                  mv.visitLdcInsn(j);
-                  mv.visitFieldInsn(
-                      Opcodes.GETSTATIC,
-                      "datadog/trace/agent/tooling/muzzle/Reference$Flag",
-                      flag.name(),
-                      "Ldatadog/trace/agent/tooling/muzzle/Reference$Flag;");
-                  mv.visitInsn(Opcodes.AASTORE);
-                  ++j;
-                }
-              }
-
-              mv.visitLdcInsn(field.getName());
-
-              { // field type
-                mv.visitLdcInsn(field.getType().getDescriptor());
-                mv.visitMethodInsn(
-                    Opcodes.INVOKESTATIC,
-                    Type.getInternalName(Type.class),
-                    "getType",
-                    Type.getMethodDescriptor(Type.class.getMethod("getType", String.class)),
-                    false);
-              }
-
-              mv.visitMethodInsn(
-                  Opcodes.INVOKEVIRTUAL,
-                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
-                  "withField",
-                  Type.getMethodDescriptor(
-                      Reference.Builder.class.getMethod(
-                          "withField",
-                          Reference.Source[].class,
-                          Reference.Flag[].class,
-                          String.class,
-                          Type.class)),
-                  false);
-            }
-            for (Reference.Method method : references[i].getMethods()) {
-              mv.visitLdcInsn(method.getSources().size());
-              mv.visitTypeInsn(
-                  Opcodes.ANEWARRAY, "datadog/trace/agent/tooling/muzzle/Reference$Source");
-              int j = 0;
-              for (Reference.Source source : method.getSources()) {
-                mv.visitInsn(Opcodes.DUP);
-                mv.visitLdcInsn(j);
-
-                mv.visitTypeInsn(
-                    Opcodes.NEW, "datadog/trace/agent/tooling/muzzle/Reference$Source");
-                mv.visitInsn(Opcodes.DUP);
-                mv.visitLdcInsn(source.getName());
-                mv.visitLdcInsn(source.getLine());
-                mv.visitMethodInsn(
-                    Opcodes.INVOKESPECIAL,
-                    "datadog/trace/agent/tooling/muzzle/Reference$Source",
-                    "<init>",
-                    "(Ljava/lang/String;I)V",
-                    false);
-
-                mv.visitInsn(Opcodes.AASTORE);
-                ++j;
-              }
-
-              mv.visitLdcInsn(method.getFlags().size());
-              mv.visitTypeInsn(
-                  Opcodes.ANEWARRAY, "datadog/trace/agent/tooling/muzzle/Reference$Flag");
-              j = 0;
-              for (Reference.Flag flag : method.getFlags()) {
-                mv.visitInsn(Opcodes.DUP);
-                mv.visitLdcInsn(j);
-                mv.visitFieldInsn(
-                    Opcodes.GETSTATIC,
-                    "datadog/trace/agent/tooling/muzzle/Reference$Flag",
-                    flag.name(),
-                    "Ldatadog/trace/agent/tooling/muzzle/Reference$Flag;");
-                mv.visitInsn(Opcodes.AASTORE);
-                ++j;
-              }
-
-              mv.visitLdcInsn(method.getName());
-
-              { // return type
-                mv.visitLdcInsn(method.getReturnType().getDescriptor());
-                mv.visitMethodInsn(
-                    Opcodes.INVOKESTATIC,
-                    Type.getInternalName(Type.class),
-                    "getType",
-                    Type.getMethodDescriptor(Type.class.getMethod("getType", String.class)),
-                    false);
-              }
-
-              mv.visitLdcInsn(method.getParameterTypes().size());
-              mv.visitTypeInsn(Opcodes.ANEWARRAY, Type.getInternalName(Type.class));
-              j = 0;
-              for (Type parameterType : method.getParameterTypes()) {
-                mv.visitInsn(Opcodes.DUP);
-                mv.visitLdcInsn(j);
-
-                mv.visitLdcInsn(parameterType.getDescriptor());
-                mv.visitMethodInsn(
-                    Opcodes.INVOKESTATIC,
-                    Type.getInternalName(Type.class),
-                    "getType",
-                    Type.getMethodDescriptor(Type.class.getMethod("getType", String.class)),
-                    false);
-
-                mv.visitInsn(Opcodes.AASTORE);
-                j++;
-              }
-
-              mv.visitMethodInsn(
-                  Opcodes.INVOKEVIRTUAL,
-                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
-                  "withMethod",
-                  Type.getMethodDescriptor(
-                      Reference.Builder.class.getMethod(
-                          "withMethod",
-                          Reference.Source[].class,
-                          Reference.Flag[].class,
-                          String.class,
-                          Type.class,
-                          Type[].class)),
-                  false);
-            }
-            mv.visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                "datadog/trace/agent/tooling/muzzle/Reference$Builder",
-                "build",
-                "()Ldatadog/trace/agent/tooling/muzzle/Reference;",
-                false);
-            mv.visitInsn(Opcodes.AASTORE);
-          }
-
-          mv.visitMethodInsn(
-              Opcodes.INVOKESPECIAL,
-              "datadog/trace/agent/tooling/muzzle/ReferenceMatcher",
-              "<init>",
-              "([Ljava/lang/String;[Ldatadog/trace/agent/tooling/muzzle/Reference;)V",
-              false);
-          mv.visitFieldInsn(
-              Opcodes.PUTFIELD,
-              instrumentationClassName,
-              MUZZLE_FIELD_NAME,
-              "Ldatadog/trace/agent/tooling/muzzle/ReferenceMatcher;");
-
-          mv.visitLabel(ret);
-          if (frames) {
-            mv.visitFrame(Opcodes.F_SAME, 1, null, 0, null);
-          }
-          mv.visitVarInsn(Opcodes.ALOAD, 0);
-          mv.visitFieldInsn(
-              Opcodes.GETFIELD,
-              instrumentationClassName,
-              MUZZLE_FIELD_NAME,
-              "Ldatadog/trace/agent/tooling/muzzle/ReferenceMatcher;");
-          mv.visitInsn(Opcodes.ARETURN);
-          mv.visitLabel(finish);
-
-          mv.visitLocalVariable(
-              "this", "L" + instrumentationClassName + ";", null, start, finish, 0);
-          mv.visitMaxs(0, 0); // recomputed
-          mv.visitEnd();
-        } catch (Exception e) {
-          throw new RuntimeException(e);
-        }
+//        try {
+//          final MethodVisitor mv =
+//              super.visitMethod(
+//                  Opcodes.ACC_PROTECTED + Opcodes.ACC_SYNCHRONIZED,
+//                  MUZZLE_METHOD_NAME,
+//                  "()Ldatadog/trace/agent/tooling/muzzle/ReferenceMatcher;",
+//                  null,
+//                  null);
+//
+//          mv.visitCode();
+//          final Label start = new Label();
+//          final Label ret = new Label();
+//          final Label finish = new Label();
+//
+//          mv.visitLabel(start);
+//          mv.visitInsn(Opcodes.ACONST_NULL);
+//          mv.visitVarInsn(Opcodes.ALOAD, 0);
+//          mv.visitFieldInsn(
+//              Opcodes.GETFIELD,
+//              instrumentationClassName,
+//              MUZZLE_FIELD_NAME,
+//              "Ldatadog/trace/agent/tooling/muzzle/ReferenceMatcher;");
+//          mv.visitJumpInsn(Opcodes.IF_ACMPNE, ret);
+//
+//          mv.visitVarInsn(Opcodes.ALOAD, 0);
+//
+//          mv.visitTypeInsn(Opcodes.NEW, "datadog/trace/agent/tooling/muzzle/ReferenceMatcher");
+//          mv.visitInsn(Opcodes.DUP);
+//
+//          mv.visitVarInsn(Opcodes.ALOAD, 0);
+//          mv.visitMethodInsn(
+//              Opcodes.INVOKEVIRTUAL,
+//              instrumentationClassName,
+//              "helperClassNames",
+//              "()[Ljava/lang/String;",
+//              false);
+//
+//          final Reference[] references = generateReferences();
+//          mv.visitLdcInsn(references.length);
+//          mv.visitTypeInsn(Opcodes.ANEWARRAY, "datadog/trace/agent/tooling/muzzle/Reference");
+//
+//          for (int i = 0; i < references.length; ++i) {
+//            mv.visitInsn(Opcodes.DUP);
+//            mv.visitLdcInsn(i);
+//            mv.visitTypeInsn(Opcodes.NEW, "datadog/trace/agent/tooling/muzzle/Reference$Builder");
+//            mv.visitInsn(Opcodes.DUP);
+//            mv.visitLdcInsn(references[i].getClassName());
+//            mv.visitMethodInsn(
+//                Opcodes.INVOKESPECIAL,
+//                "datadog/trace/agent/tooling/muzzle/Reference$Builder",
+//                "<init>",
+//                "(Ljava/lang/String;)V",
+//                false);
+//            for (Reference.Source source : references[i].getSources()) {
+//              mv.visitLdcInsn(source.getName());
+//              mv.visitLdcInsn(source.getLine());
+//              mv.visitMethodInsn(
+//                  Opcodes.INVOKEVIRTUAL,
+//                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
+//                  "withSource",
+//                  "(Ljava/lang/String;I)Ldatadog/trace/agent/tooling/muzzle/Reference$Builder;",
+//                  false);
+//            }
+//            for (Reference.Flag flag : references[i].getFlags()) {
+//              mv.visitFieldInsn(
+//                  Opcodes.GETSTATIC,
+//                  "datadog/trace/agent/tooling/muzzle/Reference$Flag",
+//                  flag.name(),
+//                  "Ldatadog/trace/agent/tooling/muzzle/Reference$Flag;");
+//              mv.visitMethodInsn(
+//                  Opcodes.INVOKEVIRTUAL,
+//                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
+//                  "withFlag",
+//                  "(Ldatadog/trace/agent/tooling/muzzle/Reference$Flag;)Ldatadog/trace/agent/tooling/muzzle/Reference$Builder;",
+//                  false);
+//            }
+//            if (null != references[i].getSuperName()) {
+//              mv.visitLdcInsn(references[i].getSuperName());
+//              mv.visitMethodInsn(
+//                  Opcodes.INVOKEVIRTUAL,
+//                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
+//                  "withSuperName",
+//                  "(Ljava/lang/String;)Ldatadog/trace/agent/tooling/muzzle/Reference$Builder;",
+//                  false);
+//            }
+//            for (String interfaceName : references[i].getInterfaces()) {
+//              mv.visitLdcInsn(interfaceName);
+//              mv.visitMethodInsn(
+//                  Opcodes.INVOKEVIRTUAL,
+//                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
+//                  "withInterface",
+//                  "(Ljava/lang/String;)Ldatadog/trace/agent/tooling/muzzle/Reference$Builder;",
+//                  false);
+//            }
+//            for (Reference.Field field : references[i].getFields()) {
+//              { // sources
+//                mv.visitLdcInsn(field.getSources().size());
+//                mv.visitTypeInsn(
+//                    Opcodes.ANEWARRAY, "datadog/trace/agent/tooling/muzzle/Reference$Source");
+//
+//                int j = 0;
+//                for (Reference.Source source : field.getSources()) {
+//                  mv.visitInsn(Opcodes.DUP);
+//                  mv.visitLdcInsn(j);
+//
+//                  mv.visitTypeInsn(
+//                      Opcodes.NEW, "datadog/trace/agent/tooling/muzzle/Reference$Source");
+//                  mv.visitInsn(Opcodes.DUP);
+//                  mv.visitLdcInsn(source.getName());
+//                  mv.visitLdcInsn(source.getLine());
+//                  mv.visitMethodInsn(
+//                      Opcodes.INVOKESPECIAL,
+//                      "datadog/trace/agent/tooling/muzzle/Reference$Source",
+//                      "<init>",
+//                      "(Ljava/lang/String;I)V",
+//                      false);
+//
+//                  mv.visitInsn(Opcodes.AASTORE);
+//                  ++j;
+//                }
+//              }
+//
+//              { // flags
+//                mv.visitLdcInsn(field.getFlags().size());
+//                mv.visitTypeInsn(
+//                    Opcodes.ANEWARRAY, "datadog/trace/agent/tooling/muzzle/Reference$Flag");
+//
+//                int j = 0;
+//                for (Reference.Flag flag : field.getFlags()) {
+//                  mv.visitInsn(Opcodes.DUP);
+//                  mv.visitLdcInsn(j);
+//                  mv.visitFieldInsn(
+//                      Opcodes.GETSTATIC,
+//                      "datadog/trace/agent/tooling/muzzle/Reference$Flag",
+//                      flag.name(),
+//                      "Ldatadog/trace/agent/tooling/muzzle/Reference$Flag;");
+//                  mv.visitInsn(Opcodes.AASTORE);
+//                  ++j;
+//                }
+//              }
+//
+//              mv.visitLdcInsn(field.getName());
+//
+//              { // field type
+//                mv.visitLdcInsn(field.getType().getDescriptor());
+//                mv.visitMethodInsn(
+//                    Opcodes.INVOKESTATIC,
+//                    Type.getInternalName(Type.class),
+//                    "getType",
+//                    Type.getMethodDescriptor(Type.class.getMethod("getType", String.class)),
+//                    false);
+//              }
+//
+//              mv.visitMethodInsn(
+//                  Opcodes.INVOKEVIRTUAL,
+//                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
+//                  "withField",
+//                  Type.getMethodDescriptor(
+//                      Reference.Builder.class.getMethod(
+//                          "withField",
+//                          Reference.Source[].class,
+//                          Reference.Flag[].class,
+//                          String.class,
+//                          Type.class)),
+//                  false);
+//            }
+//            for (Reference.Method method : references[i].getMethods()) {
+//              mv.visitLdcInsn(method.getSources().size());
+//              mv.visitTypeInsn(
+//                  Opcodes.ANEWARRAY, "datadog/trace/agent/tooling/muzzle/Reference$Source");
+//              int j = 0;
+//              for (Reference.Source source : method.getSources()) {
+//                mv.visitInsn(Opcodes.DUP);
+//                mv.visitLdcInsn(j);
+//
+//                mv.visitTypeInsn(
+//                    Opcodes.NEW, "datadog/trace/agent/tooling/muzzle/Reference$Source");
+//                mv.visitInsn(Opcodes.DUP);
+//                mv.visitLdcInsn(source.getName());
+//                mv.visitLdcInsn(source.getLine());
+//                mv.visitMethodInsn(
+//                    Opcodes.INVOKESPECIAL,
+//                    "datadog/trace/agent/tooling/muzzle/Reference$Source",
+//                    "<init>",
+//                    "(Ljava/lang/String;I)V",
+//                    false);
+//
+//                mv.visitInsn(Opcodes.AASTORE);
+//                ++j;
+//              }
+//
+//              mv.visitLdcInsn(method.getFlags().size());
+//              mv.visitTypeInsn(
+//                  Opcodes.ANEWARRAY, "datadog/trace/agent/tooling/muzzle/Reference$Flag");
+//              j = 0;
+//              for (Reference.Flag flag : method.getFlags()) {
+//                mv.visitInsn(Opcodes.DUP);
+//                mv.visitLdcInsn(j);
+//                mv.visitFieldInsn(
+//                    Opcodes.GETSTATIC,
+//                    "datadog/trace/agent/tooling/muzzle/Reference$Flag",
+//                    flag.name(),
+//                    "Ldatadog/trace/agent/tooling/muzzle/Reference$Flag;");
+//                mv.visitInsn(Opcodes.AASTORE);
+//                ++j;
+//              }
+//
+//              mv.visitLdcInsn(method.getName());
+//
+//              { // return type
+//                mv.visitLdcInsn(method.getReturnType().getDescriptor());
+//                mv.visitMethodInsn(
+//                    Opcodes.INVOKESTATIC,
+//                    Type.getInternalName(Type.class),
+//                    "getType",
+//                    Type.getMethodDescriptor(Type.class.getMethod("getType", String.class)),
+//                    false);
+//              }
+//
+//              mv.visitLdcInsn(method.getParameterTypes().size());
+//              mv.visitTypeInsn(Opcodes.ANEWARRAY, Type.getInternalName(Type.class));
+//              j = 0;
+//              for (Type parameterType : method.getParameterTypes()) {
+//                mv.visitInsn(Opcodes.DUP);
+//                mv.visitLdcInsn(j);
+//
+//                mv.visitLdcInsn(parameterType.getDescriptor());
+//                mv.visitMethodInsn(
+//                    Opcodes.INVOKESTATIC,
+//                    Type.getInternalName(Type.class),
+//                    "getType",
+//                    Type.getMethodDescriptor(Type.class.getMethod("getType", String.class)),
+//                    false);
+//
+//                mv.visitInsn(Opcodes.AASTORE);
+//                j++;
+//              }
+//
+//              mv.visitMethodInsn(
+//                  Opcodes.INVOKEVIRTUAL,
+//                  "datadog/trace/agent/tooling/muzzle/Reference$Builder",
+//                  "withMethod",
+//                  Type.getMethodDescriptor(
+//                      Reference.Builder.class.getMethod(
+//                          "withMethod",
+//                          Reference.Source[].class,
+//                          Reference.Flag[].class,
+//                          String.class,
+//                          Type.class,
+//                          Type[].class)),
+//                  false);
+//            }
+//            mv.visitMethodInsn(
+//                Opcodes.INVOKEVIRTUAL,
+//                "datadog/trace/agent/tooling/muzzle/Reference$Builder",
+//                "build",
+//                "()Ldatadog/trace/agent/tooling/muzzle/Reference;",
+//                false);
+//            mv.visitInsn(Opcodes.AASTORE);
+//          }
+//
+//          mv.visitMethodInsn(
+//              Opcodes.INVOKESPECIAL,
+//              "datadog/trace/agent/tooling/muzzle/ReferenceMatcher",
+//              "<init>",
+//              "([Ljava/lang/String;[Ldatadog/trace/agent/tooling/muzzle/Reference;)V",
+//              false);
+//          mv.visitFieldInsn(
+//              Opcodes.PUTFIELD,
+//              instrumentationClassName,
+//              MUZZLE_FIELD_NAME,
+//              "Ldatadog/trace/agent/tooling/muzzle/ReferenceMatcher;");
+//
+//          mv.visitLabel(ret);
+//          if (frames) {
+//            mv.visitFrame(Opcodes.F_SAME, 1, null, 0, null);
+//          }
+//          mv.visitVarInsn(Opcodes.ALOAD, 0);
+//          mv.visitFieldInsn(
+//              Opcodes.GETFIELD,
+//              instrumentationClassName,
+//              MUZZLE_FIELD_NAME,
+//              "Ldatadog/trace/agent/tooling/muzzle/ReferenceMatcher;");
+//          mv.visitInsn(Opcodes.ARETURN);
+//          mv.visitLabel(finish);
+//
+//          mv.visitLocalVariable(
+//              "this", "L" + instrumentationClassName + ";", null, start, finish, 0);
+//          mv.visitMaxs(0, 0); // recomputed
+//          mv.visitEnd();
+//        } catch (Exception e) {
+//          throw new RuntimeException(e);
+//        }
       }
 
       super.visitField(
