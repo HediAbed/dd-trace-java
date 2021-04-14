@@ -9,8 +9,11 @@ import com.datadog.profiling.controller.ProfilingSystem;
 import com.datadog.profiling.controller.UnsupportedEnvironmentException;
 import com.datadog.profiling.uploader.ProfileUploader;
 import datadog.trace.api.Config;
+import datadog.trace.api.GlobalTracer;
+import datadog.trace.api.Tracer;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -51,6 +54,8 @@ public class ProfilingAgent {
       }
 
       try {
+        registerScopeEventFactory();
+
         final Controller controller = ControllerFactory.createController(config);
 
         final ProfileUploader uploader = new ProfileUploader(config);
@@ -91,6 +96,17 @@ public class ProfilingAgent {
         log.warn("Failed to initialize profiling agent! " + e.getMessage());
         log.debug("Failed to initialize profiling agent!", e);
       }
+    }
+  }
+
+  private static void registerScopeEventFactory() {
+    try {
+      Tracer tracer = GlobalTracer.get();
+      Method m = tracer.getClass().getDeclaredMethod("registerScopeEventFactory");
+      m.setAccessible(true);
+      m.invoke(tracer);
+    } catch (Exception e) {
+      log.debug("Unable to register scope event factory. {}", e.toString());
     }
   }
 

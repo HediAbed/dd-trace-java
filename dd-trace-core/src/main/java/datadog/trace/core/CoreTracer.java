@@ -347,9 +347,6 @@ public class CoreTracer implements AgentTracer.TracerAPI {
               config.isScopeInheritAsyncPropagation());
       this.scopeManager = csm;
 
-      if (config.isProfilingEnabled()) {
-        createScopeEventFactory(csm);
-      }
     } else {
       this.scopeManager = scopeManager;
     }
@@ -653,7 +650,7 @@ public class CoreTracer implements AgentTracer.TracerAPI {
   }
 
   @SuppressForbidden
-  private static void createScopeEventFactory(ContinuableScopeManager continuableScopeManager) {
+  private void registerScopeEventFactory() {
     try {
       ExtendedScopeListener scopeListener =
           (ExtendedScopeListener)
@@ -661,7 +658,11 @@ public class CoreTracer implements AgentTracer.TracerAPI {
                   .getDeclaredConstructor()
                   .newInstance();
 
-      continuableScopeManager.addExtendedScopeListener(scopeListener);
+      log.debug("scopeManager: {}", scopeManager);
+      if (scopeManager instanceof ContinuableScopeManager) {
+        log.debug("adding scope listener");
+        ((ContinuableScopeManager) scopeManager).addExtendedScopeListener(scopeListener);
+      }
     } catch (final Throwable e) {
       log.debug("Profiling of ScopeEvents is not available. {}", e.getMessage());
     }
