@@ -86,6 +86,8 @@ public class Agent {
           };
     }
 
+    // force the task scheduler init early
+    AgentTaskScheduler.INSTANCE.isShutdown();
     startDatadogAgent(inst, bootstrapURL);
 
     final EnumSet<Library> libraries = detectLibraries(log);
